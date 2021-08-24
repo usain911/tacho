@@ -1,0 +1,135 @@
+#field {
+    background-color: bisque;
+}
+
+svg {
+    border: 1px solid #000;
+}
+
+.einheit {
+    font: bold 30px sans-serif;
+}
+
+.line {
+    background: #F14134;
+}
+
+.circles {
+    fill: none;
+    stroke: white;
+    stroke-width: 3px;
+    opacity: 0.3;
+}
+
+.ursprung {
+    fill: white;
+    z-index: 4;
+}
+
+.innen {
+    fill: red;
+    z-index: 5;
+}
+
+.line {
+    stroke-width: 10px;
+    stroke-linecap: round;
+}
+
+.maxLine {
+    stroke: #FF6384;
+}
+
+.minLine {
+    stroke: #36A2EB;
+}
+
+.movingAverageLine {
+    stroke: #FFCE56;
+}
+
+.scale {
+    stroke: white;
+    opacity: 0.3;
+}
+
+.even {
+    stroke-width: 3;
+}
+
+.odd {
+    stroke-width: 1;
+}
+
+.zahlen {
+    width: 100%;
+    height: auto;
+    fill: white;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 30px;
+    color: #FFF;
+    display: block;
+    position: absolute;
+    text-align: center;
+    text-transform: uppercase;
+    text-decoration: none;
+}
+
+.zahl-0 {
+    transform: translate(5%);
+}
+
+.zahl-1 {
+    transform: translate(4%, 1%);
+}
+
+.zahl-2 {
+    transform: translate(3%, 2%);
+}
+
+.zahl-3 {
+    transform: translate(3%, 3%);
+}
+
+.zahl-4 {
+    transform: translate(2%, 4%);
+}
+
+.zahl-5 {
+    transform: translate(1%, 5%);
+}
+
+.zahl-6 {
+    transform: translate(0, 6%);
+}
+
+.zahl-7 {
+    transform: translate(-1%, 5%);
+}
+
+.zahl-8 {
+    transform: translate(-2%, 4%);
+}
+
+.zahl-9 {
+    transform: translate(-4%, 3%);
+}
+
+.zahl-10 {
+    transform: translate(-5%, 2%);
+}
+
+.zahl-11 {
+    transform: translate(-6%, 1%);
+}
+
+.zahl-12 {
+    transform: translate(-7%);
+}
+
+.nail {
+    fill: none;
+    stroke: yellow;
+    stroke-width: 3px;
+    background-image: linear-gradient(to bottom, #F14134, #343536);
+}
