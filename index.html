@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html>
+
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<link rel="stylesheet" type="text/css" href="tacho.css" media="screen" />
+
+<body>
+    <h1>Tacho</h1>
+    <svg id="field">  
+        <text x="40" y="35" class="einheit">in KW oder so</text>
+    </svg>
+    <!-- <button type="button" onclick="getNewValue()">neuer Wert</button> -->
+</body>
+
+
+<script>
+    // Constants
+    const field = document.getElementById("field");
+    const height = screen.availHeight / 2;
+    const width = height * 2;
+    const centerX = (width / 2);
+    const centerY = (height);
+    const num_values_showed = 100;
+    const max_value = 100;
+    const max_degree = 180;
+    //!----
+
+    // Variables for Visual
+    var svgns = null;
+    var container = null;
+    var maxLine = null;
+    var minLine = null;
+    var movingAverageLine = null;
+    var scaleLineArray = [stepCount];
+
+    var line = d3.line();
+    //!----
+
+    // Variables for Code
+    var stepCount = 12;
+    var scaleArray = [stepCount];
+    var step_size = max_value / stepCount;
+    var currentMaxValue = 0.0;
+    var radius = num_values_showed;
+    var array_values = new Array();
+    var array_degrees = [num_values_showed];
+    var array_object = [num_values_showed];
+    var index = 0;
+    //!----
+
+    // Create Visual in the beginning 
+    function createSvg() {
+        svgns = "http://www.w3.org/2000/svg",
+            container = document.getElementById('field');
+        container.setAttribute("width", width);
+        container.setAttribute("height", height + 50);
+
+        //Halbkreis
+        var circle = document.createElementNS(svgns, 'circle');
+        circle.setAttributeNS(null, "cx", centerX);
+        circle.setAttributeNS(null, "cy", centerY);
+        circle.setAttributeNS(null, "r", height);
+        container.append(circle);
+
+        // Ursprung
+        var point = document.createElementNS(svgns, 'circle');
+        point.setAttributeNS(null, "cx", centerX);
+        point.setAttributeNS(null, "cy", centerY);
+        point.setAttributeNS(null, "r", 10);
+        point.classList.add('ursprung')
+        container.append(point);
+
+        // ursprung innen
+        var pointInnen = document.createElementNS(svgns, 'circle');
+        pointInnen.setAttributeNS(null, "cx", centerX);
+        pointInnen.setAttributeNS(null, "cy", centerY);
+        pointInnen.setAttributeNS(null, "r", 5);
+        pointInnen.classList.add('innen')
+        container.append(pointInnen);
+
+        // Linie, die den maximalen Wert anzeigt
+        maxLine = document.createElementNS(svgns, 'line');
+        maxLine.setAttributeNS(null, "id", "maxLine");
+        maxLine.setAttributeNS(null, "x1", 0);
+        maxLine.setAttributeNS(null, "y1", centerY);
+        maxLine.setAttributeNS(null, "x2", 50);
+        maxLine.setAttributeNS(null, "y2", centerY);
+        maxLine.classList.add('line');
+        maxLine.classList.add('maxLine')
+        container.append(maxLine)
+
+        // Linie, die den minimalen Wert anzeigt
+        minLine = document.createElementNS(svgns, 'line');
+        minLine.setAttributeNS(null, "id", "minLine");
+        minLine.setAttributeNS(null, "x1", 0);
+        minLine.setAttributeNS(null, "y1", centerY);
+        minLine.setAttributeNS(null, "x2", 50);
+        minLine.setAttributeNS(null, "y2", centerY);
+        minLine.classList.add('line');
+        minLine.classList.add('minLine');
+        container.append(minLine)
+
+        // Linie, die den aktuellen Mittelwert anzeigt
+        movingAverageLine = document.createElementNS(svgns, 'line');
+        movingAverageLine.setAttributeNS(null, "id", "movingAverage");
+        movingAverageLine.setAttributeNS(null, "x1", 0);
+        movingAverageLine.setAttributeNS(null, "y1", centerY);
+        movingAverageLine.setAttributeNS(null, "x2", 50);
+        movingAverageLine.setAttributeNS(null, "y2", centerY);
+        movingAverageLine.classList.add('line');
+        movingAverageLine.classList.add('movingAverageLine');
+        container.append(movingAverageLine);
+
+
+        // Erstellung der Skala Striche
+        for (var i = 0; i < scaleLineArray.length; i++) {
+            scaleLineArray[i] = document.createElementNS(svgns, 'line');
+            let coordinates = getCoordinatesScale(scaleArray[i]);
+            scaleLineArray[i].setAttributeNS(null, "x1", coordinates[0][0]);
+            scaleLineArray[i].setAttributeNS(null, "y1", coordinates[0][1]);
+            scaleLineArray[i].setAttributeNS(null, "x2", coordinates[1][0]);
+            scaleLineArray[i].setAttributeNS(null, "y2", coordinates[1][1]);
+            scaleLineArray[i].classList.add('scale');
+
+            if (i % 2 == 0) {
+                scaleLineArray[i].classList.add('even');
+                //fügt Zahl an die Linie
+                addZahl(i);
+            } else {
+                scaleLineArray[i].classList.add('odd');
+            }
+
+            container.append(scaleLineArray[i]);
+
+            // Außnahmen = 0, 90, 180
+            // < 90 --> result == 360 - Winkel
+            // > 90 --> result ==  Winkel
+        }
+
+        for (let i = 0; i < num_values_showed; i = i + 10) {
+            var circles = document.createElementNS(svgns, 'circle');
+            circles.setAttributeNS(null, "cx", centerX);
+            circles.setAttributeNS(null, "cy", centerY);
+            circles.classList.add('circles')
+            var r = height - (height / array_values.length) * i;
+            circles.setAttributeNS(null, "r", r);
+            container.append(circles);
+        }
+
+    }
+
+
+    //Zahlen der Skala hinzufügen
+    function addZahl(i) {
+        let coordinates = getCoordinatesScale(scaleArray[i]);
+
+        var newText = document.createElementNS(svgns, "text");
+        newText.setAttributeNS(null, "x", coordinates[0][0]);
+        newText.setAttributeNS(null, "y", coordinates[0][1]);
+        newText.classList.add('zahlen');
+        newText.classList.add("zahl-" + i);
+        newText.setAttributeNS(null, "focus", false);
+        newText.appendChild(document.createTextNode(i));
+        document.getElementById("field").appendChild(newText);
+    }
+
+    //!----
+
+    // Fill the Array at the start
+    function fillArray() {
+        // Einen Wert initial Pushen
+        array_values.unshift(0);
+        current_var = 5;
+        for (let i = 1; i < num_values_showed; i++) {
+            array_values.unshift(0);
+        }
+
+        var steps = 0;
+        for (let i = 0; i <= stepCount; i++) {
+            scaleArray[i] = steps;
+            steps = steps + step_size;
+            scaleLineArray[i] = null;
+        }
+        createSvg();
+    }
+    //!----
+
+    function readJson() {
+
+    }
+
+    // Class for every data value
+    class TestValues {
+        constructor(value, height, width, position) {
+            this.value = value;
+            this.height = height;
+            this.width = width;
+            this.position = position;
+        }
+    }
+    //!----
+
+    // Put one new value at front and delete the last one
+    function getNewValue() {
+        array_values.pop();
+        new_val = api_call();
+
+        currentMaxValue = Math.max(...array_values);
+        currentMinValue = Math.min(...array_values);
+
+        array_values.unshift(new_val);
+        drawLine();
+
+        plotLine(maxLine, currentMaxValue);
+        plotLine(minLine, currentMinValue);
+        plotLine(movingAverageLine, movingAverage());
+    }
+    //!---
+
+    //
+    function api_call() {
+        call = points[index]['value'][0];
+        index += 1;
+        return call;
+    }
+    //!---
+
+    // Value to corresponding degree value
+    function values_2_degrees() {
+        for (let i = 0; i < num_values_showed; i++) {
+            array_degrees[i] = ((array_values[i] * max_degree) / max_value);
+        }
+    }
+    //!--- 
+
+    // Moving average value for average line
+    function movingAverage() {
+        const average = arr => arr.reduce((p, c) => p + c, 0) / arr.length;
+        return average(array_values);
+    }
+    //!--- 
+
+    // Recieve coordinates for the scale
+    function getCoordinatesScale(max_value_input) {
+        var max_line_degree = ((max_value_input * max_degree) / max_value);
+        return [calc_offset_line(max_line_degree, height), calc_offset_line(max_line_degree, 0)];
+    }
+    //!---
+
+    // Recieve coordinates for given value
+    function getCoordinates(max_value_input) {
+        var max_line_degree = ((max_value_input * max_degree) / max_value);
+        return [calc_offset_line(max_line_degree, height), calc_offset_line(max_line_degree, height - 50)];
+    }
+    //!---
+
+    // Draws a line between given coordinates for given input-line
+    function plotLine(input, currentMaxValue) {
+        let coordinates = getCoordinates(currentMaxValue);
+        input.setAttributeNS(null, "x1", coordinates[0][0]);
+        input.setAttributeNS(null, "y1", coordinates[0][1]);
+        input.setAttributeNS(null, "x2", coordinates[1][0]);
+        input.setAttributeNS(null, "y2", coordinates[1][1]);
+    }
+    //!---
+
+    // Receive a degree and radius value and returns the x and y position relative to the middle
+    function calc_offset(degree, tempRadius) {
+        if (degree == 0) {
+            var h = 0;
+            var b = -tempRadius;
+
+        } else if (degree == max_degree) {
+            var h = 0;
+            var b = tempRadius;
+        } else if (degree % 90 == 0) {
+            var h = tempRadius;
+            var b = 0;
+        } else {
+            if (degree < 90) {
+                var h = Math.sin((degree) * Math.PI / 180) * tempRadius;
+                var b = Math.sin((90 - degree) * Math.PI / 180) * -tempRadius;
+            } else {
+                var h = Math.sin((degree) * Math.PI / 180) * tempRadius;
+                var b = Math.sin((90 - degree) * Math.PI / 180) * -tempRadius;
+            }
+        }
+        return [h, b];
+    }
+    //!---
+
+    // Returns the position for a given point
+    function calc_offset_line(max_value_degree, tempRadius) {
+        let valArray = calc_offset(max_value_degree, tempRadius);
+        return [centerX + valArray[1], centerY - valArray[0]];
+    }
+    //!---
+
+    // Fills the array_object-Array with positions for every data point
+    function calc_offset_points_from_middle() {
+        tempRadius = height;
+        for (let idx = 0; idx < num_values_showed; idx++) {
+            var tempRadius = height - (height / array_values.length) * idx;
+            let valArray = calc_offset(array_degrees[idx], tempRadius);
+            let h = valArray[0];
+            let b = valArray[1];
+            array_object[idx] = new TestValues(array_degrees[idx], h, b, [Math.round((centerX + b)), Math.round((centerY - h))]);
+            tempRadius = height;
+        }
+    }
+    //!---
+
+    // Draws a line between every data-point in array_object
+    function drawLine() {
+        values_2_degrees();
+        calc_offset_points_from_middle();
+        var points = [array_object.length + 1];
+        for (let i = 0; i < array_object.length; i++) {
+            points[i] = array_object[i].position;
+        }
+        d3.select('svg').selectAll("path").remove();
+
+        var line = d3.line()
+            .curve(d3.curveBasis) // http://bl.ocks.org/d3indepth/b6d4845973089bc1012dec1674d3aff8
+            .defined(d => d != null);
+
+        var graphic = d3.select("svg")
+            .append("path") //path
+            .data([points])
+            .attr("d", line)
+            .attr("class", "nail")
+    }
+    //!---
+
+    function drawRawJs() {
+        values_2_degrees();
+        calc_offset_points_from_middle();
+        d3.selectAll('#point').remove()
+        var points = [array_object.length + 1];
+
+        for (let i = 0; i < array_object.length; i++) {
+            points[i] = array_object[i].position;
+        }
+
+
+        var svgns = "http://www.w3.org/2000/svg",
+            container = document.getElementById('field');
+        for (let i = 0; i < points.length; i++) {
+            var circle = document.createElementNS(svgns, 'circle')
+            circle.setAttributeNS(null, 'cx', points[i][0]);
+            circle.setAttributeNS(null, 'cy', points[i][1]);
+            circle.setAttributeNS(null, 'r', 3);
+            circle.setAttributeNS(null, 'fill', 'white');
+            circle.setAttributeNS(null, "id", "point");
+            container.append(circle);
+        }
+    }
+
+    setInterval(function() {
+        try {
+            getNewValue();
+        } catch (error) {
+            return null;
+        }
+
+    }, 100);
+
+    fillArray();
+    drawLine();
+
+    var points = [{
+        "date": 1617868814448,
+        "value": [51.599998474121094]
+    }, {
+        "date": 1617868844476,
+        "value": [51.599998474121094]
+    }, {
+        "date": 1617868863629,
+        "value": [49.79999923706055]
+    }, {
+        "date": 1617868864013,
+        "value": [45.79999923706055]
+    }, {
+        "date": 1617868864377,
+        "value": [44.400001525878906]
+    }, {
+        "date": 1617868874496,
+        "value": [44.400001525878906]
+    }, {
+        "date": 1617868904629,
+        "value": [44.400001525878906]
+    }, {
+        "date": 1617868934650,
+        "value": [44.400001525878906]
+    }, {
+        "date": 1617868948527,
+        "value": [42.79999923706055]
+    }, {
+        "date": 1617868948901,
+        "value": [41.599998474121094]
+    }, {
+        "date": 1617868949660,
+        "value": [40.20000076293945]
+    }, {
+        "date": 1617868954129,
+        "value": [39.400001525878906]
+    }, {
+        "date": 1617868954510,
+        "value": [37.599998474121094]
+    }, {
+        "date": 1617868958247,
+        "value": [37.20000076293945]
+    }, {
+        "date": 1617868958998,
+        "value": [35.20000076293945]
+    }, {
+        "date": 1617868963862,
+        "value": [34.20000076293945]
+    }, {
+        "date": 1617868964226,
+        "value": [33.599998474121094]
+    }, {
+        "date": 1617868964599,
+        "value": [33.0]
+    }, {
+        "date": 1617868964977,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617868994860,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869024692,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869054755,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869084806,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869114827,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869144767,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869174772,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869205082,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869235090,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869265105,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869295007,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869324997,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869355347,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869385008,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869415268,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869445207,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869475412,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869505222,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869535288,
+        "value": [32.599998474121094]
+    }, {
+        "date": 1617869563291,
+        "value": [100.0]
+    }, {
+        "date": 1617869565184,
+        "value": [100.0]
+    }, {
+        "date": 1617869595204,
+        "value": [100.0]
+    }, {
+        "date": 1617869625556,
+        "value": [100.0]
+    }, {
+        "date": 1617869655608,
+        "value": [100.0]
+    }, {
+        "date": 1617869685289,
+        "value": [100.0]
+    }, {
+        "date": 1617869715309,
+        "value": [100.0]
+    }, {
+        "date": 1617869745437,
+        "value": [100.0]
+    }, {
+        "date": 1617869775531,
+        "value": [100.0]
+    }, {
+        "date": 1617869805547,
+        "value": [100.0]
+    }, {
+        "date": 1617869835673,
+        "value": [100.0]
+    }, {
+        "date": 1617869865691,
+        "value": [100.0]
+    }, {
+        "date": 1617869895791,
+        "value": [100.0]
+    }, {
+        "date": 1617869925815,
+        "value": [100.0]
+    }, {
+        "date": 1617869955774,
+        "value": [100.0]
+    }, {
+        "date": 1617869985720,
+        "value": [100.0]
+    }, {
+        "date": 1617870015691,
+        "value": [100.0]
+    }, {
+        "date": 1617870045860,
+        "value": [100.0]
+    }, {
+        "date": 1617870075921,
+        "value": [100.0]
+    }, {
+        "date": 1617870105909,
+        "value": [100.0]
+    }, {
+        "date": 1617870135845,
+        "value": [100.0]
+    }, {
+        "date": 1617870165711,
+        "value": [100.0]
+    }, {
+        "date": 1617870195735,
+        "value": [100.0]
+    }, {
+        "date": 1617870225757,
+        "value": [100.0]
+    }, {
+        "date": 1617870256048,
+        "value": [100.0]
+    }, {
+        "date": 1617870285994,
+        "value": [100.0]
+    }, {
+        "date": 1617870315922,
+        "value": [100.0]
+    }, {
+        "date": 1617870345927,
+        "value": [100.0]
+    }, {
+        "date": 1617870375867,
+        "value": [100.0]
+    }, {
+        "date": 1617870406098,
+        "value": [100.0]
+    }, {
+        "date": 1617870435997,
+        "value": [100.0]
+    }, {
+        "date": 1617870465943,
+        "value": [100.0]
+    }, {
+        "date": 1617870496281,
+        "value": [100.0]
+    }, {
+        "date": 1617870526321,
+        "value": [100.0]
+    }, {
+        "date": 1617870556270,
+        "value": [100.0]
+    }, {
+        "date": 1617865211411,
+        "value": [100.0]
+    }, {
+        "date": 1617865241407,
+        "value": [100.0]
+    }, {
+        "date": 1617865271493,
+        "value": [100.0]
+    }, {
+        "date": 1617865301413,
+        "value": [100.0]
+    }, {
+        "date": 1617865331375,
+        "value": [100.0]
+    }, {
+        "date": 1617865361387,
+        "value": [100.0]
+    }, {
+        "date": 1617865391722,
+        "value": [100.0]
+    }, {
+        "date": 1617865421681,
+        "value": [100.0]
+    }, {
+        "date": 1617865451612,
+        "value": [100.0]
+    }, {
+        "date": 1617865481491,
+        "value": [100.0]
+    }, {
+        "date": 1617865511704,
+        "value": [100.0]
+    }, {
+        "date": 1617865541692,
+        "value": [100.0]
+    }, {
+        "date": 1617865571756,
+        "value": [100.0]
+    }, {
+        "date": 1617865601753,
+        "value": [100.0]
+    }, {
+        "date": 1617865631783,
+        "value": [100.0]
+    }, {
+        "date": 1617865661841,
+        "value": [100.0]
+    }, {
+        "date": 1617865691855,
+        "value": [100.0]
+    }, {
+        "date": 1617865721857,
+        "value": [100.0]
+    }, {
+        "date": 1617865751694,
+        "value": [100.0]
+    }, {
+        "date": 1617865781894,
+        "value": [100.0]
+    }, {
+        "date": 1617865811778,
+        "value": [100.0]
+    }, {
+        "date": 1617865841980,
+        "value": [100.0]
+    }, {
+        "date": 1617865871944,
+        "value": [100.0]
+    }, {
+        "date": 1617865902124,
+        "value": [100.0]
+    }, {
+        "date": 1617865931969,
+        "value": [100.0]
+    }, {
+        "date": 1617865961876,
+        "value": [100.0]
+    }, {
+        "date": 1617865992223,
+        "value": [100.0]
+    }, {
+        "date": 1617866022210,
+        "value": [100.0]
+    }, {
+        "date": 1617866052290,
+        "value": [100.0]
+    }, {
+        "date": 1617866082252,
+        "value": [100.0]
+    }, {
+        "date": 1617866112240,
+        "value": [100.0]
+    }, {
+        "date": 1617866142128,
+        "value": [100.0]
+    }, {
+        "date": 1617866172120,
+        "value": [100.0]
+    }, {
+        "date": 1617866202404,
+        "value": [100.0]
+    }, {
+        "date": 1617866232416,
+        "value": [100.0]
+    }, {
+        "date": 1617866262449,
+        "value": [100.0]
+    }, {
+        "date": 1617866292490,
+        "value": [100.0]
+    }, {
+        "date": 1617866322219,
+        "value": [100.0]
+    }, {
+        "date": 1617866352328,
+        "value": [100.0]
+    }, {
+        "date": 1617866382290,
+        "value": [100.0]
+    }, {
+        "date": 1617866412293,
+        "value": [100.0]
+    }, {
+        "date": 1617866442362,
+        "value": [100.0]
+    }, {
+        "date": 1617866472432,
+        "value": [100.0]
+    }, {
+        "date": 1617866502577,
+        "value": [100.0]
+    }, {
+        "date": 1617866532558,
+        "value": [100.0]
+    }, {
+        "date": 1617866562696,
+        "value": [100.0]
+    }, {
+        "date": 1617866592693,
+        "value": [100.0]
+    }, {
+        "date": 1617866622627,
+        "value": [100.0]
+    }, {
+        "date": 1617866652527,
+        "value": [100.0]
+    }, {
+        "date": 1617866682767,
+        "value": [100.0]
+    }, {
+        "date": 1617866712719,
+        "value": [100.0]
+    }, {
+        "date": 1617866742674,
+        "value": [100.0]
+    }, {
+        "date": 1617866772689,
+        "value": [100.0]
+    }, {
+        "date": 1617866802736,
+        "value": [100.0]
+    }, {
+        "date": 1617866832700,
+        "value": [100.0]
+    }, {
+        "date": 1617866862967,
+        "value": [100.0]
+    }, {
+        "date": 1617866892903,
+        "value": [100.0]
+    }, {
+        "date": 1617866922929,
+        "value": [100.0]
+    }, {
+        "date": 1617866953046,
+        "value": [100.0]
+    }, {
+        "date": 1617866982832,
+        "value": [100.0]
+    }, {
+        "date": 1617867012853,
+        "value": [100.0]
+    }, {
+        "date": 1617867043169,
+        "value": [100.0]
+    }, {
+        "date": 1617867073162,
+        "value": [100.0]
+    }, {
+        "date": 1617867103226,
+        "value": [100.0]
+    }, {
+        "date": 1617867133002,
+        "value": [100.0]
+    }, {
+        "date": 1617867163321,
+        "value": [100.0]
+    }, {
+        "date": 1617867193355,
+        "value": [100.0]
+    }, {
+        "date": 1617867223075,
+        "value": [100.0]
+    }, {
+        "date": 1617867253058,
+        "value": [100.0]
+    }, {
+        "date": 1617867283416,
+        "value": [100.0]
+    }, {
+        "date": 1617867313486,
+        "value": [100.0]
+    }, {
+        "date": 1617867343348,
+        "value": [100.0]
+    }, {
+        "date": 1617867373403,
+        "value": [100.0]
+    }, {
+        "date": 1617867403288,
+        "value": [100.0]
+    }, {
+        "date": 1617867433249,
+        "value": [100.0]
+    }, {
+        "date": 1617867463317,
+        "value": [100.0]
+    }, {
+        "date": 1617867493318,
+        "value": [100.0]
+    }, {
+        "date": 1617867523602,
+        "value": [100.0]
+    }, {
+        "date": 1617867553685,
+        "value": [100.0]
+    }, {
+        "date": 1617867583731,
+        "value": [100.0]
+    }, {
+        "date": 1617867613395,
+        "value": [100.0]
+    }, {
+        "date": 1617867643775,
+        "value": [100.0]
+    }, {
+        "date": 1617867673709,
+        "value": [100.0]
+    }, {
+        "date": 1617867703765,
+        "value": [100.0]
+    }, {
+        "date": 1617867733773,
+        "value": [100.0]
+    }, {
+        "date": 1617867763816,
+        "value": [100.0]
+    }, {
+        "date": 1617867793536,
+        "value": [100.0]
+    }, {
+        "date": 1617867823659,
+        "value": [100.0]
+    }, {
+        "date": 1617867853680,
+        "value": [100.0]
+    }, {
+        "date": 1617867883971,
+        "value": [100.0]
+    }, {
+        "date": 1617867913972,
+        "value": [100.0]
+    }, {
+        "date": 1617867943684,
+        "value": [100.0]
+    }, {
+        "date": 1617867974038,
+        "value": [100.0]
+    }, {
+        "date": 1617868003903,
+        "value": [100.0]
+    }, {
+        "date": 1617868033808,
+        "value": [100.0]
+    }, {
+        "date": 1617868064136,
+        "value": [100.0]
+    }, {
+        "date": 1617868094054,
+        "value": [100.0]
+    }, {
+        "date": 1617868123878,
+        "value": [100.0]
+    }, {
+        "date": 1617868153891,
+        "value": [100.0]
+    }, {
+        "date": 1617868183992,
+        "value": [100.0]
+    }, {
+        "date": 1617868214011,
+        "value": [100.0]
+    }, {
+        "date": 1617868244093,
+        "value": [100.0]
+    }, {
+        "date": 1617868274117,
+        "value": [100.0]
+    }, {
+        "date": 1617868304126,
+        "value": [100.0]
+    }, {
+        "date": 1617868334172,
+        "value": [100.0]
+    }, {
+        "date": 1617868364199,
+        "value": [100.0]
+    }, {
+        "date": 1617868394327,
+        "value": [100.0]
+    }, {
+        "date": 1617868424476,
+        "value": [100.0]
+    }, {
+        "date": 1617868454222,
+        "value": [100.0]
+    }, {
+        "date": 1617868475277,
+        "value": [98.5999984741211]
+    }, {
+        "date": 1617868477154,
+        "value": [97.0]
+    }, {
+        "date": 1617868477530,
+        "value": [93.0]
+    }, {
+        "date": 1617868477907,
+        "value": [89.0]
+    }, {
+        "date": 1617868478283,
+        "value": [85.0]
+    }, {
+        "date": 1617868479028,
+        "value": [83.5999984741211]
+    }, {
+        "date": 1617868479413,
+        "value": [80.4000015258789]
+    }, {
+        "date": 1617868484279,
+        "value": [80.4000015258789]
+    }, {
+        "date": 1617868498117,
+        "value": [70.0]
+    }, {
+        "date": 1617868514475,
+        "value": [70.0]
+    }, {
+        "date": 1617868544477,
+        "value": [70.0]
+    }, {
+        "date": 1617868574460,
+        "value": [70.0]
+    }, {
+        "date": 1617868604460,
+        "value": [70.0]
+    }, {
+        "date": 1617868628085,
+        "value": [69.4000015258789]
+    }, {
+        "date": 1617868628466,
+        "value": [67.80000305175781]
+    }, {
+        "date": 1617868628833,
+        "value": [64.5999984741211]
+    }, {
+        "date": 1617868629209,
+        "value": [64.0]
+    }, {
+        "date": 1617868634522,
+        "value": [64.0]
+    }, {
+        "date": 1617868664513,
+        "value": [64.0]
+    }, {
+        "date": 1617868694496,
+        "value": [64.0]
+    }, {
+        "date": 1617868701986,
+        "value": [60.0]
+    }, {
+        "date": 1617868702362,
+        "value": [57.0]
+    }, {
+        "date": 1617868703126,
+        "value": [57.599998474121094]
+    }, {
+        "date": 1617868724573,
+        "value": [57.599998474121094]
+    }, {
+        "date": 1617868754687,
+        "value": [57.599998474121094]
+    }, {
+        "date": 1617868778766,
+        "value": [55.79999923706055]
+    }, {
+        "date": 1617868779132,
+        "value": [52.20000076293945]
+    }, {
+        "date": 1617868779875,
+        "value": [51.599998474121094]
+    }, {
+        "date": 1617868784744,
+        "value": [51.599998474121094]
+    }, {
+        "date": 1617861608540,
+        "value": [100.0]
+    }, {
+        "date": 1617861638462,
+        "value": [100.0]
+    }, {
+        "date": 1617861668470,
+        "value": [100.0]
+    }, {
+        "date": 1617861698409,
+        "value": [100.0]
+    }, {
+        "date": 1617861728393,
+        "value": [100.0]
+    }, {
+        "date": 1617861758436,
+        "value": [100.0]
+    }, {
+        "date": 1617861788682,
+        "value": [100.0]
+    }, {
+        "date": 1617861818577,
+        "value": [100.0]
+    }, {
+        "date": 1617861848541,
+        "value": [100.0]
+    }, {
+        "date": 1617861865462,
+        "value": [99.5999984741211]
+    }, {
+        "date": 1617861865826,
+        "value": [97.19999694824219]
+    }, {
+        "date": 1617861866196,
+        "value": [94.80000305175781]
+    }, {
+        "date": 1617861866572,
+        "value": [91.5999984741211]
+    }, {
+        "date": 1617861866936,
+        "value": [87.5999984741211]
+    }, {
+        "date": 1617861867312,
+        "value": [83.19999694824219]
+    }, {
+        "date": 1617861867682,
+        "value": [71.80000305175781]
+    }, {
+        "date": 1617861869170,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617861878550,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617861908772,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617861938817,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617861968703,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617861998711,
+        "value": [70.19999694824219]
+    }, {
+        "date": 1617862013658,
+        "value": [70.80000305175781]
+    }, {
+        "date": 1617862016310,
+        "value": [74.80000305175781]
+    }, {
+        "date": 1617862016680,
+        "value": [75.4000015258789]
+    }, {
+        "date": 1617862028669,
+        "value": [75.4000015258789]
+    }, {
+        "date": 1617862058671,
+        "value": [75.4000015258789]
+    }, {
+        "date": 1617862088641,
+        "value": [77.5999984741211]
+    }, {
+        "date": 1617862089000,
+        "value": [81.5999984741211]
+    }, {
+        "date": 1617862089418,
+        "value": [85.5999984741211]
+    }, {
+        "date": 1617862089788,
+        "value": [88.80000305175781]
+    }, {
+        "date": 1617862090165,
+        "value": [97.5999984741211]
+    }, {
+        "date": 1617862090539,
+        "value": [100.0]
+    }, {
+        "date": 1617862118881,
+        "value": [100.0]
+    }, {
+        "date": 1617862148889,
+        "value": [100.0]
+    }, {
+        "date": 1617862178951,
+        "value": [100.0]
+    }, {
+        "date": 1617862208829,
+        "value": [100.0]
+    }, {
+        "date": 1617862238807,
+        "value": [100.0]
+    }, {
+        "date": 1617862269189,
+        "value": [100.0]
+    }, {
+        "date": 1617862299165,
+        "value": [100.0]
+    }, {
+        "date": 1617862329142,
+        "value": [100.0]
+    }, {
+        "date": 1617862358923,
+        "value": [100.0]
+    }, {
+        "date": 1617862388021,
+        "value": [98.0]
+    }, {
+        "date": 1617862388388,
+        "value": [94.0]
+    }, {
+        "date": 1617862388760,
+        "value": [90.0]
+    }, {
+        "date": 1617862389123,
+        "value": [86.80000305175781]
+    }, {
+        "date": 1617862389513,
+        "value": [84.4000015258789]
+    }, {
+        "date": 1617862389888,
+        "value": [81.80000305175781]
+    }, {
+        "date": 1617862390993,
+        "value": [81.19999694824219]
+    }, {
+        "date": 1617862391362,
+        "value": [78.0]
+    }, {
+        "date": 1617862391732,
+        "value": [76.5999984741211]
+    }, {
+        "date": 1617862392474,
+        "value": [79.0]
+    }, {
+        "date": 1617862393225,
+        "value": [77.4000015258789]
+    }, {
+        "date": 1617862393602,
+        "value": [75.4000015258789]
+    }, {
+        "date": 1617862395485,
+        "value": [77.80000305175781]
+    }, {
+        "date": 1617862395849,
+        "value": [80.0]
+    }, {
+        "date": 1617862419070,
+        "value": [80.0]
+    }, {
+        "date": 1617862448994,
+        "value": [80.0]
+    }, {
+        "date": 1617862479285,
+        "value": [80.0]
+    }, ];
+</script>
+
+</html>
