@@ -1,24 +1,61 @@
 #field {
-    background-color: bisque;
+    background-color: #fff;
 }
 
-svg {
-    border: 1px solid #000;
+
+/* .container {
+    width: 80%;
+} */
+
+.shadow {
+    position: absolute;
+    width: 80%;
+    height: calc(40vw + 50px);
+    /* border-radius: 80% 80% 0% 0%; */
+    border-top-left-radius: 80vw;
+    border-top-right-radius: 80vw;
+    /* background-color: red; */
+    box-shadow: 0px -5px 30px rgb(104, 104, 104);
 }
 
 .einheit {
-    font: bold 30px sans-serif;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    font: bold 18px sans-serif;
+    text-align: center;
+    width: 80%;
+    height: calc(40vw + 65px);
+    color: #fff;
+    z-index: 100;
+    /* position: relative; */
+}
+
+.einheit h2 {
+    color: darkgray;
+    text-shadow: 0px 0px 5px rgb(184, 0, 0);
 }
 
 .line {
     background: #F14134;
 }
 
+.circle-container {
+    stroke: silver;
+    stroke-width: 4px;
+    /* filter: drop-shadow(0px -5px 20px rgba(70, 69, 69, 0.9)); */
+}
+
+
+/* halbkreise innerhalb */
+
 .circles {
     fill: none;
     stroke: white;
     stroke-width: 3px;
     opacity: 0.3;
+    box-shadow: 10px 10px 10px red;
 }
 
 .ursprung {

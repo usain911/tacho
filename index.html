@@ -7,19 +7,30 @@
 
 <body>
     <h1>Tacho</h1>
+    <div class="einheit">
+        <h2>
+            kWh
+        </h2>
+
+    </div>
+    <div class="shadow"></div>
     <svg id="field">  
-        <text x="40" y="35" class="einheit">in KW oder so</text>
+        <text class="einheit2">in KW oder so</text>
     </svg>
-    <!-- <button type="button" onclick="getNewValue()">neuer Wert</button> -->
 </body>
 
 
 <script>
     // Constants
     const field = document.getElementById("field");
-    const height = screen.availHeight / 2;
-    const width = height * 2;
+    //const height = screen.availHeight / 2;
+    const width = window.innerWidth * 0.8;
+    //const width = height * 2;
+    const height = window.innerWidth * 0.4;
+    //console.log("breite: " + width + " höhe " + height);
+
     const centerX = (width / 2);
+    const centerX2 = (width / 3);
     const centerY = (height);
     const num_values_showed = 100;
     const max_value = 100;
@@ -61,6 +72,8 @@
         circle.setAttributeNS(null, "cx", centerX);
         circle.setAttributeNS(null, "cy", centerY);
         circle.setAttributeNS(null, "r", height);
+        circle.classList.add('circle-container');
+        //circle.setAttributeNS()
         container.append(circle);
 
         // Ursprung
